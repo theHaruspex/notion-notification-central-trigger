@@ -27,7 +27,7 @@ export const TOKEN_BUCKET_CAPACITY = 3;
 export const TIMEZONE = 'America/Los_Angeles';
 
 // Shared trigger key used between this integration and the Notion automation.
-export const TRIGGER_KEY = 'NC_TRIGGER_V1';
+export const TRIGGER_KEY = 'ok_;>g(k-iz&"uX2[73R7B480}=#';
 
 // Notion property names (kept in one place so they are easy to change if needed)
 export const PROP_NAME_TITLE = 'Name';

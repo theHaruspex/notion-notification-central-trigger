@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { LOG_LEVEL, TIMEZONE } from './config';
 import { fetchAllNotifications, setTriggerForNotification, shouldTriggerNotification } from './notifications';
 import { getCurrentSlot, isDueThisTick, parseTempo } from './tempo';
@@ -22,10 +25,18 @@ export async function handler() {
     const notifications = await fetchAllNotifications();
 
     let considered = 0;
+    let activeCount = 0;
+    let inactiveCount = 0;
     let triggered = 0;
 
     for (const notification of notifications) {
       considered += 1;
+
+       if (notification.isActive) {
+        activeCount += 1;
+      } else {
+        inactiveCount += 1;
+      }
 
       const parsedTempo = parseTempo(notification.tempoRaw);
 
@@ -52,6 +63,10 @@ export async function handler() {
         );
       }
     }
+
+    logInfo(
+      `Notifications summary: total=${notifications.length}, active=${activeCount}, inactive=${inactiveCount}`
+    );
 
     logInfo(
       `Processed ${considered} notifications, triggered ${triggered} for slot ${currentSlot.hour}.${currentSlot.quarter}`

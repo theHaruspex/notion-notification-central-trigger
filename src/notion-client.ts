@@ -1,5 +1,4 @@
 import { Client } from '@notionhq/client';
-import type { QueryDatabaseParameters, UpdatePageParameters } from '@notionhq/client/build/src/api-endpoints';
 import { GLOBAL_RPS, NOTION_API_KEY, TOKEN_BUCKET_CAPACITY } from './config';
 import { TokenBucket } from './utils/token-bucket';
 
@@ -21,12 +20,13 @@ class NotionRateLimitedClient {
     await this.bucket.acquire();
   }
 
-  async queryDatabase(params: QueryDatabaseParameters) {
+  // We accept a loose `any` here to avoid depending on internal SDK type paths.
+  async queryDatabase(params: any) {
     await this.throttle();
     return this.client.databases.query(params);
   }
 
-  async updatePage(params: UpdatePageParameters) {
+  async updatePage(params: any) {
     await this.throttle();
     return this.client.pages.update(params);
   }

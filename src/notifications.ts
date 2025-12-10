@@ -1,4 +1,3 @@
-import type { QueryDatabaseResponse, PageObjectResponse } from '@notionhq/client/build/src/api-response';
 import { LOG_LEVEL, NOTIFICATION_DB_ID, PROP_NAME_IS_ACTIVE, PROP_NAME_TEMPO, PROP_NAME_TITLE, PROP_NAME_TRIGGER_KEY, PROP_NAME_TRIGGER_TOGGLE, TRIGGER_KEY } from './config';
 import { notion } from './notion-client';
 import type { ParsedTempo } from './tempo';
@@ -43,7 +42,7 @@ function extractPlainTextFromProperty(prop: any | undefined): string | null {
   return null;
 }
 
-function mapPageToNotification(page: PageObjectResponse): NotificationConfig {
+function mapPageToNotification(page: any): NotificationConfig {
   const props: any = page.properties;
 
   const titleProp = props[PROP_NAME_TITLE];
@@ -73,13 +72,13 @@ export async function fetchAllNotifications(): Promise<NotificationConfig[]> {
   let cursor: string | undefined;
 
   do {
-    const response: QueryDatabaseResponse = await notion.queryDatabase({
+    const response: any = await notion.queryDatabase({
       database_id: NOTIFICATION_DB_ID,
       start_cursor: cursor,
       page_size: 100,
     });
 
-    const pageResults = (response.results as PageObjectResponse[])
+    const pageResults = (response.results as any[])
       .filter((p) => p.object === 'page')
       .map(mapPageToNotification);
 
