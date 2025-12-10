@@ -19,7 +19,10 @@ function logError(message: string, ...args: any[]) {
 
 export async function handler() {
   const currentSlot = getCurrentSlot(TIMEZONE);
-  logInfo(`Lambda tick at hour=${currentSlot.hour}, quarter=${currentSlot.quarter} (${TIMEZONE})`);
+  // Visual separator between runs
+  logInfo('');
+  logInfo('========== Notification Central tick START ==========');
+  logInfo(`Slot: hour=${currentSlot.hour}, quarter=${currentSlot.quarter} (${TIMEZONE})`);
 
   try {
     const notifications = await fetchAllNotifications();
@@ -64,13 +67,10 @@ export async function handler() {
       }
     }
 
-    logInfo(
-      `Notifications summary: total=${notifications.length}, active=${activeCount}, inactive=${inactiveCount}`
-    );
-
-    logInfo(
-      `Processed ${considered} notifications, triggered ${triggered} for slot ${currentSlot.hour}.${currentSlot.quarter}`
-    );
+    logInfo(`Notifications summary: total=${notifications.length}, active=${activeCount}, inactive=${inactiveCount}`);
+    logInfo(`Processed ${considered} notifications, triggered ${triggered} for slot ${currentSlot.hour}.${currentSlot.quarter}`);
+    logInfo('========== Notification Central tick END ==========');
+    logInfo('');
   } catch (err: any) {
     logError('Unhandled error during Lambda execution:', err?.message || err);
     throw err;
