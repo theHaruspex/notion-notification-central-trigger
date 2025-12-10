@@ -1,0 +1,32 @@
+{
+  "name": "notion-notification-central-trigger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lambda-style backend that flips a Notion Trigger Toggle on a schedule based on Tempo configuration stored in Notion.",
+  "main": "dist/lambda.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/lambda.ts",
+    "start:compiled": "node dist/lambda.js",
+    "lint": "echo \"No linter configured\""
+  },
+  "keywords": [
+    "notion",
+    "automation",
+    "notification",
+    "ts-node"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
+
+
