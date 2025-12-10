@@ -1,0 +1,31 @@
+name: Deploy to EC2 on main
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: admin
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -Eeuo pipefail
+            sudo -u appuser bash -lc '
+              cd /opt/myapp/notion-notification-central-trigger &&
+              git fetch origin &&
+              git reset --hard origin/main &&
+              npm ci --silent &&
+              npm run --silent build &&
+              pm2 reload notion-notification-central-trigger --update-env
+            '
+
+

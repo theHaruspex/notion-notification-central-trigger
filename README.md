@@ -46,3 +46,16 @@ npm run start:compiled
 
 The deployed Lambda should have its handler set to `dist/lambda.handler` and be triggered by an EventBridge schedule (e.g. every 15 minutes).
 
+### Deployment notes (EC2 + pm2 + GitHub Actions)
+
+- **App host**: Deployed on an EC2 instance (Debian 12) reachable as `admin@<EC2_HOST>` (currently `3.131.200.212`).
+- **Runtime**: Node.js 22 + pm2 running the compiled `dist/lambda.js` on a 15‑minute cron.
+- **Deploy workflow**:
+  - GitHub Actions workflow at `.github/workflows/deploy.yml` uses `appleboy/ssh-action` to SSH into the instance as `admin`, `cd` into `/opt/myapp/notion-notification-central-trigger`, `git fetch && git reset --hard origin/main`, `npm ci`, `npm run build`, and `pm2 reload notion-notification-central-trigger --update-env`.
+- **Private repo + deploy key**:
+  - On EC2 as `appuser`, generated a deploy key: `ssh-keygen -t ed25519 -C "notion-notification-central-trigger-ec2" -f ~/.ssh/id_ed25519_github -N ""`.
+  - Added the **public** key (`ssh-ed25519 AAAA... notion-notification-central-trigger-ec2`) as a **Deploy key** on this repo (read-only).
+  - Updated the remote on EC2 to use SSH: `git remote set-url origin git@github.com:theHaruspex/notion-notification-central-trigger.git`.
+  - This lets the EC2 box pull from the private repo without passwords.
+
+
