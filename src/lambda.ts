@@ -3,7 +3,6 @@ dotenv.config();
 
 import { LOG_LEVEL, TIMEZONE } from './config';
 import { fetchAllNotifications, setTriggerForNotification, shouldTriggerNotification } from './notifications';
-import { getCurrentSlot, isDueThisTick, parseTempo } from './tempo';
 
 function logInfo(message: string, ...args: any[]) {
   if (LOG_LEVEL === 'debug' || LOG_LEVEL === 'info') {
@@ -18,11 +17,11 @@ function logError(message: string, ...args: any[]) {
 }
 
 export async function handler() {
-  const currentSlot = getCurrentSlot(TIMEZONE);
   // Visual separator between runs
   logInfo('');
   logInfo('========== Notification Central tick START ==========');
-  logInfo(`Slot: hour=${currentSlot.hour}, quarter=${currentSlot.quarter} (${TIMEZONE})`);
+  const startedAt = new Date().toISOString();
+  logInfo(`Timestamp: ${startedAt} (configured timezone: ${TIMEZONE})`);
 
   try {
     const notifications = await fetchAllNotifications();
@@ -41,18 +40,7 @@ export async function handler() {
         inactiveCount += 1;
       }
 
-      const parsedTempo = parseTempo(notification.tempoRaw);
-
-      if (!shouldTriggerNotification(notification, parsedTempo)) {
-        continue;
-      }
-
-      if (!parsedTempo) {
-        // shouldTriggerNotification already no-opped, but keep type narrowing happy
-        continue;
-      }
-
-      if (!isDueThisTick(parsedTempo, currentSlot)) {
+      if (!shouldTriggerNotification(notification)) {
         continue;
       }
 
@@ -68,7 +56,7 @@ export async function handler() {
     }
 
     logInfo(`Notifications summary: total=${notifications.length}, active=${activeCount}, inactive=${inactiveCount}`);
-    logInfo(`Processed ${considered} notifications, triggered ${triggered} for slot ${currentSlot.hour}.${currentSlot.quarter}`);
+    logInfo(`Processed ${considered} notifications, triggered ${triggered}`);
     logInfo('========== Notification Central tick END ==========');
     logInfo('');
   } catch (err: any) {

@@ -1,12 +1,11 @@
-import { LOG_LEVEL, NOTIFICATION_DB_ID, PROP_NAME_IS_ACTIVE, PROP_NAME_TEMPO, PROP_NAME_TITLE, PROP_NAME_TRIGGER_KEY, PROP_NAME_TRIGGER_TOGGLE, TRIGGER_KEY } from './config';
+import { LOG_LEVEL, NOTIFICATION_DB_ID, PROP_NAME_IS_ACTIVE, PROP_NAME_IS_PRIMED_VALUE, PROP_NAME_TITLE, PROP_NAME_TRIGGER_KEY, PROP_NAME_TRIGGER_TOGGLE, TRIGGER_KEY } from './config';
 import { notion } from './notion-client';
-import type { ParsedTempo } from './tempo';
 
 export interface NotificationConfig {
   id: string;
   name: string;
   isActive: boolean;
-  tempoRaw: string | null;
+  isPrimed: boolean | null;
   triggerToggle: boolean | null;
 }
 
@@ -51,8 +50,21 @@ function mapPageToNotification(page: any): NotificationConfig {
   const activeProp = props[PROP_NAME_IS_ACTIVE];
   const isActive = activeProp?.type === 'checkbox' ? Boolean(activeProp.checkbox) : false;
 
-  const tempoProp = props[PROP_NAME_TEMPO];
-  const tempoRaw = extractPlainTextFromProperty(tempoProp);
+  const primedProp = props[PROP_NAME_IS_PRIMED_VALUE];
+  let isPrimed: boolean | null = null;
+  if (primedProp) {
+    if (primedProp.type === 'checkbox') {
+      isPrimed = Boolean(primedProp.checkbox);
+    } else if (primedProp.type === 'formula') {
+      if (primedProp.formula?.type === 'boolean') {
+        isPrimed = Boolean(primedProp.formula.boolean);
+      } else if (primedProp.formula?.type === 'string') {
+        const val = (primedProp.formula.string ?? '').trim().toLowerCase();
+        if (val === 'true') isPrimed = true;
+        else if (val === 'false') isPrimed = false;
+      }
+    }
+  }
 
   const toggleProp = props[PROP_NAME_TRIGGER_TOGGLE];
   const triggerToggle =
@@ -62,7 +74,7 @@ function mapPageToNotification(page: any): NotificationConfig {
     id: page.id,
     name,
     isActive,
-    tempoRaw,
+    isPrimed,
     triggerToggle,
   };
 }
@@ -93,22 +105,19 @@ export async function fetchAllNotifications(): Promise<NotificationConfig[]> {
 }
 
 /**
- * Given a notification config and parsed tempo, decide whether to trigger.
+ * Given a notification config, decide whether to trigger based on the primed flag.
  * This function enforces the "no-op on bad state" rules:
  * - If not active -> no-op
- * - If malformed tempo (parseTempo returns null) -> no-op
+ * - If Is Primed?, Value is not true -> no-op
  * - If Trigger Toggle is already true -> no-op
  */
-export function shouldTriggerNotification(
-  notification: NotificationConfig,
-  parsedTempo: ParsedTempo | null
-): boolean {
+export function shouldTriggerNotification(notification: NotificationConfig): boolean {
   if (!notification.isActive) {
     return false;
   }
 
-  if (!parsedTempo) {
-    logDebug(`Skipping "${notification.name}" due to malformed or empty Tempo`);
+  if (notification.isPrimed !== true) {
+    logDebug(`Skipping "${notification.name}" because Is Primed?, Value is not true`);
     return false;
   }
 
