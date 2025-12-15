@@ -34,7 +34,6 @@ export const PROP_NAME_TITLE = 'Name';
 export const PROP_NAME_IS_ACTIVE = 'Is Active?';
 export const PROP_NAME_TEMPO = 'Tempo';
 export const PROP_NAME_TEMPO_VALIDATOR = 'Tempo Validator';
-export const PROP_NAME_IS_PRIMED_VALUE = 'Is Primed?, Value';
 export const PROP_NAME_TRIGGER_KEY = 'Trigger: Key';
 export const PROP_NAME_TRIGGER_TOGGLE = 'Trigger: Toggle';
 

@@ -3,6 +3,7 @@ dotenv.config();
 
 import { LOG_LEVEL, TIMEZONE } from './config';
 import { fetchAllNotifications, setTriggerForNotification, shouldTriggerNotification } from './notifications';
+import { getCurrentTick, parseTempo, isDueThisTick } from './tempo';
 
 function logInfo(message: string, ...args: any[]) {
   if (LOG_LEVEL === 'debug' || LOG_LEVEL === 'info') {
@@ -19,8 +20,13 @@ function logError(message: string, ...args: any[]) {
 export async function runOnce(dryRun: boolean) {
   // Visual separator between runs
   logInfo('');
-  logInfo(`========== Notification Central tick START (${dryRun ? 'DRY RUN' : 'LIVE'}) ==========`);  const startedAt = new Date().toISOString();
+  logInfo(
+    `========== Notification Central tick START (${dryRun ? 'DRY RUN' : 'LIVE'}) ==========`);  const startedAt = new Date().toISOString();
+  const currentTick = getCurrentTick(TIMEZONE);
   logInfo(`Timestamp: ${startedAt} (configured timezone: ${TIMEZONE})`);
+  logInfo(
+    `Current tick (LA time): weekday=${currentTick.weekday}, hour=${currentTick.hour}, quarter=${currentTick.quarter}`
+  );
 
   try {
     const notifications = await fetchAllNotifications();
@@ -39,7 +45,13 @@ export async function runOnce(dryRun: boolean) {
         inactiveCount += 1;
       }
 
-      if (!shouldTriggerNotification(notification)) {
+      const parsedTempo = parseTempo(notification.tempoRaw);
+
+      if (!shouldTriggerNotification(notification, parsedTempo)) {
+        continue;
+      }
+
+      if (!parsedTempo || !isDueThisTick(parsedTempo, currentTick)) {
         continue;
       }
 

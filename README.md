@@ -23,7 +23,8 @@ Property names in Notion are currently assumed to match the CSV export:
 
 - `Name` (title)
 - `Is Active?` (checkbox)
-- `Is Primed?, Value` (formula/checkbox used to decide if this tick should fire; Lambda only fires when this is `true`)
+- `Tempo` (text, `weekday.hour.quarter` CSV like `1.11.2, 3.9.1`)
+- `Tempo Validator` (formula/text that marks invalid tempos with `❌`)
 - `Trigger: Key` (text/rich text)
 - `Trigger: Toggle` (checkbox)
 
