@@ -16,11 +16,10 @@ function logError(message: string, ...args: any[]) {
   console.error(message, ...args);
 }
 
-export async function handler() {
+export async function runOnce(dryRun: boolean) {
   // Visual separator between runs
   logInfo('');
-  logInfo('========== Notification Central tick START ==========');
-  const startedAt = new Date().toISOString();
+  logInfo(`========== Notification Central tick START (${dryRun ? 'DRY RUN' : 'LIVE'}) ==========`);  const startedAt = new Date().toISOString();
   logInfo(`Timestamp: ${startedAt} (configured timezone: ${TIMEZONE})`);
 
   try {
@@ -44,14 +43,19 @@ export async function handler() {
         continue;
       }
 
-      try {
-        await setTriggerForNotification(notification.id);
+      if (dryRun) {
+        logInfo(`[DRY RUN] Would set trigger for "${notification.name}" (${notification.id})`);
         triggered += 1;
-      } catch (err: any) {
-        logError(
-          `Failed to set trigger for notification "${notification.name}" (${notification.id}):`,
-          err?.message || err
-        );
+      } else {
+        try {
+          await setTriggerForNotification(notification.id);
+          triggered += 1;
+        } catch (err: any) {
+          logError(
+            `Failed to set trigger for notification "${notification.name}" (${notification.id}):`,
+            err?.message || err
+          );
+        }
       }
     }
 
@@ -65,9 +69,13 @@ export async function handler() {
   }
 }
 
+export async function handler() {
+  await runOnce(false);
+}
+
 // Allow local execution via ts-node / node for quick testing.
 if (require.main === module) {
-  handler().catch((err) => {
+  runOnce(false).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('Lambda handler failed:', err);
     process.exit(1);
