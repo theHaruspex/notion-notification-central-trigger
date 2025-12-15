@@ -1,4 +1,14 @@
-import { LOG_LEVEL, NOTIFICATION_DB_ID, PROP_NAME_IS_ACTIVE, PROP_NAME_TEMPO, PROP_NAME_TITLE, PROP_NAME_TRIGGER_KEY, PROP_NAME_TRIGGER_TOGGLE, TRIGGER_KEY } from './config';
+import {
+  LOG_LEVEL,
+  NOTIFICATION_DB_ID,
+  PROP_NAME_IS_ACTIVE,
+  PROP_NAME_TEMPO,
+  PROP_NAME_TEMPO_VALIDATOR,
+  PROP_NAME_TITLE,
+  PROP_NAME_TRIGGER_KEY,
+  PROP_NAME_TRIGGER_TOGGLE,
+  TRIGGER_KEY,
+} from './config';
 import { notion } from './notion-client';
 import type { ParsedTempo } from './tempo';
 
@@ -7,6 +17,7 @@ export interface NotificationConfig {
   name: string;
   isActive: boolean;
   tempoRaw: string | null;
+  tempoValidator: string | null;
   triggerToggle: boolean | null;
 }
 
@@ -54,6 +65,9 @@ function mapPageToNotification(page: any): NotificationConfig {
   const tempoProp = props[PROP_NAME_TEMPO];
   const tempoRaw = extractPlainTextFromProperty(tempoProp);
 
+  const tempoValidatorProp = props[PROP_NAME_TEMPO_VALIDATOR];
+  const tempoValidator = extractPlainTextFromProperty(tempoValidatorProp);
+
   const toggleProp = props[PROP_NAME_TRIGGER_TOGGLE];
   const triggerToggle =
     toggleProp && toggleProp.type === 'checkbox' ? Boolean(toggleProp.checkbox) : null;
@@ -63,6 +77,7 @@ function mapPageToNotification(page: any): NotificationConfig {
     name,
     isActive,
     tempoRaw,
+    tempoValidator,
     triggerToggle,
   };
 }
@@ -97,6 +112,7 @@ export async function fetchAllNotifications(): Promise<NotificationConfig[]> {
  * This function enforces the "no-op on bad state" rules:
  * - If not active -> no-op
  * - If malformed tempo (parseTempo returns null) -> no-op
+ * - If Tempo Validator indicates invalid -> no-op
  * - If Trigger Toggle is already true -> no-op
  */
 export function shouldTriggerNotification(
@@ -108,7 +124,17 @@ export function shouldTriggerNotification(
   }
 
   if (!parsedTempo) {
-    logDebug(`Skipping "${notification.name}" due to malformed or empty Tempo`);
+    logDebug(
+      `Skipping "${notification.name}" due to malformed or empty Tempo: "${notification.tempoRaw}"`
+    );
+    return false;
+  }
+
+  const validator = notification.tempoValidator ?? '';
+  if (validator.includes('❌')) {
+    logDebug(
+      `Skipping "${notification.name}" because Tempo Validator indicates invalid: "${validator}"`
+    );
     return false;
   }
 

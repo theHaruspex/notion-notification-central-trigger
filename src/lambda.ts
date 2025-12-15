@@ -3,7 +3,7 @@ dotenv.config();
 
 import { LOG_LEVEL, TIMEZONE } from './config';
 import { fetchAllNotifications, setTriggerForNotification, shouldTriggerNotification } from './notifications';
-import { getCurrentSlot, isDueThisTick, parseTempo } from './tempo';
+import { getCurrentTick, parseTempo, isDueThisTick } from './tempo';
 
 function logInfo(message: string, ...args: any[]) {
   if (LOG_LEVEL === 'debug' || LOG_LEVEL === 'info') {
@@ -17,12 +17,16 @@ function logError(message: string, ...args: any[]) {
   console.error(message, ...args);
 }
 
-export async function handler() {
-  const currentSlot = getCurrentSlot(TIMEZONE);
+export async function runOnce(dryRun: boolean) {
   // Visual separator between runs
   logInfo('');
-  logInfo('========== Notification Central tick START ==========');
-  logInfo(`Slot: hour=${currentSlot.hour}, quarter=${currentSlot.quarter} (${TIMEZONE})`);
+  logInfo(
+    `========== Notification Central tick START (${dryRun ? 'DRY RUN' : 'LIVE'}) ==========`);  const startedAt = new Date().toISOString();
+  const currentTick = getCurrentTick(TIMEZONE);
+  logInfo(`Timestamp: ${startedAt} (configured timezone: ${TIMEZONE})`);
+  logInfo(
+    `Current tick (LA time): weekday=${currentTick.weekday}, hour=${currentTick.hour}, quarter=${currentTick.quarter}`
+  );
 
   try {
     const notifications = await fetchAllNotifications();
@@ -47,28 +51,28 @@ export async function handler() {
         continue;
       }
 
-      if (!parsedTempo) {
-        // shouldTriggerNotification already no-opped, but keep type narrowing happy
+      if (!parsedTempo || !isDueThisTick(parsedTempo, currentTick)) {
         continue;
       }
 
-      if (!isDueThisTick(parsedTempo, currentSlot)) {
-        continue;
-      }
-
-      try {
-        await setTriggerForNotification(notification.id);
+      if (dryRun) {
+        logInfo(`[DRY RUN] Would set trigger for "${notification.name}" (${notification.id})`);
         triggered += 1;
-      } catch (err: any) {
-        logError(
-          `Failed to set trigger for notification "${notification.name}" (${notification.id}):`,
-          err?.message || err
-        );
+      } else {
+        try {
+          await setTriggerForNotification(notification.id);
+          triggered += 1;
+        } catch (err: any) {
+          logError(
+            `Failed to set trigger for notification "${notification.name}" (${notification.id}):`,
+            err?.message || err
+          );
+        }
       }
     }
 
     logInfo(`Notifications summary: total=${notifications.length}, active=${activeCount}, inactive=${inactiveCount}`);
-    logInfo(`Processed ${considered} notifications, triggered ${triggered} for slot ${currentSlot.hour}.${currentSlot.quarter}`);
+    logInfo(`Processed ${considered} notifications, triggered ${triggered}`);
     logInfo('========== Notification Central tick END ==========');
     logInfo('');
   } catch (err: any) {
@@ -77,9 +81,13 @@ export async function handler() {
   }
 }
 
+export async function handler() {
+  await runOnce(false);
+}
+
 // Allow local execution via ts-node / node for quick testing.
 if (require.main === module) {
-  handler().catch((err) => {
+  runOnce(false).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('Lambda handler failed:', err);
     process.exit(1);

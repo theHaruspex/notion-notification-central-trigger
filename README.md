@@ -23,7 +23,8 @@ Property names in Notion are currently assumed to match the CSV export:
 
 - `Name` (title)
 - `Is Active?` (checkbox)
-- `Tempo` (text, `hour.quarter` CSV like `9.1, 14.3`)
+- `Tempo` (text, `weekday.hour.quarter` CSV like `1.11.2, 3.9.1`)
+- `Tempo Validator` (formula/text that marks invalid tempos with `❌`)
 - `Trigger: Key` (text/rich text)
 - `Trigger: Toggle` (checkbox)
 
@@ -31,7 +32,7 @@ All other behavior (timezone, log level, trigger key value, rate limits) is conf
 
 ### Running locally
 
-- **Directly with ts-node**:
+- **Directly with ts-node (live run)**:
 
 ```bash
 npm start
@@ -43,6 +44,14 @@ npm start
 npm run build
 npm run start:compiled
 ```
+
+- **Dry run (no writes, just logs what would trigger)**:
+
+```bash
+npm run dry-run
+```
+
+This uses `src/dry-run.ts`, which calls the shared tick runner in DRY RUN mode so it never writes Trigger Key / Trigger Toggle back to Notion.
 
 The deployed Lambda should have its handler set to `dist/lambda.handler` and be triggered by an EventBridge schedule (e.g. every 15 minutes).
 

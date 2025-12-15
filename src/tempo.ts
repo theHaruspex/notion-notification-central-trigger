@@ -2,21 +2,23 @@ import { TIMEZONE } from './config';
 
 export type Quarter = 1 | 2 | 3 | 4;
 
-export interface TempoSlot {
+export interface TempoTick {
+  weekday: number; // 1–7 (Mon=1 ... Sun=7) to match Notion's formatDate(..., "d")
   hour: number; // 0–23
   quarter: Quarter;
 }
 
 export interface ParsedTempo {
-  slots: TempoSlot[];
+  ticks: TempoTick[];
 }
 
 /**
- * Parse a Tempo CSV string like "9.1, 14.3, 18.4" into structured slots.
+ * Parse a Tempo CSV string like "1.11.2, 3.9.1" into structured ticks.
  *
- * The format is strictly `hour.quarter` where:
+ * The format is strictly `weekday.hour.quarter` where:
+ * - weekday is 1–7 (Mon=1 ... Sun=7)
  * - hour is 0–23
- * - quarter is 1–4
+ * - quarter is 1–4 (15-minute blocks)
  *
  * If any entry is malformed or out of range, we treat the entire Tempo as invalid
  * and return null so that callers can no-op for that notification.
@@ -31,17 +33,21 @@ export function parseTempo(raw: string | null | undefined): ParsedTempo | null {
 
   if (entries.length === 0) return null;
 
-  const slots: TempoSlot[] = [];
+  const ticks: TempoTick[] = [];
 
   for (const entry of entries) {
-    const match = /^(\d{1,2})\.(\d)$/.exec(entry);
+    const match = /^(\d{1,2})\.(\d{1,2})\.(\d)$/.exec(entry);
     if (!match) {
       return null;
     }
 
-    const hour = Number(match[1]);
-    const quarterNum = Number(match[2]) as Quarter;
+    const weekday = Number(match[1]);
+    const hour = Number(match[2]);
+    const quarterNum = Number(match[3]) as Quarter;
 
+    if (weekday < 1 || weekday > 7) {
+      return null;
+    }
     if (hour < 0 || hour > 23) {
       return null;
     }
@@ -49,50 +55,54 @@ export function parseTempo(raw: string | null | undefined): ParsedTempo | null {
       return null;
     }
 
-    slots.push({ hour, quarter: quarterNum });
+    ticks.push({ weekday, hour, quarter: quarterNum });
   }
 
-  if (slots.length === 0) return null;
+  if (ticks.length === 0) return null;
 
-  return { slots };
+  return { ticks };
 }
 
-export interface CurrentSlot extends TempoSlot {}
-
 /**
- * Determine the current hour.quarter in the configured timezone.
+ * Compute the "current tick" in the configured timezone.
  *
- * We assume the Lambda is triggered close to the beginning of a quarter-minute
- * (00, 15, 30, 45) by EventBridge.
+ * This mirrors the Notion formula logic:
+ * - weekday: 1–7 (Mon=1 ... Sun=7)
+ * - hour: 0–23
+ * - quarter: 1–4 (15-minute buckets)
  */
-export function getCurrentSlot(timeZone: string = TIMEZONE): CurrentSlot {
+export function getCurrentTick(timeZone: string = TIMEZONE): TempoTick {
   const now = new Date();
 
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  // Derive the local time in the target timezone using toLocaleString.
+  const localeString = now.toLocaleString('en-US', { timeZone });
+  const zoned = new Date(localeString);
 
-  const parts = formatter.formatToParts(now);
-  const hourStr = parts.find((p) => p.type === 'hour')?.value ?? '0';
-  const minuteStr = parts.find((p) => p.type === 'minute')?.value ?? '0';
+  const jsWeekday = zoned.getDay(); // 0–6, Sun=0
+  const weekday = ((jsWeekday + 6) % 7) + 1; // 1–7, Mon=1
 
-  const hour = Number(hourStr);
-  const minute = Number(minuteStr);
+  const hour = zoned.getHours();
+  const minute = zoned.getMinutes();
 
-  const quarterIndex = Math.floor(minute / 15);
-  const quarter = (quarterIndex + 1) as Quarter; // 0–3 -> 1–4
+  let quarter: Quarter;
+  if (minute < 15) quarter = 1;
+  else if (minute < 30) quarter = 2;
+  else if (minute < 45) quarter = 3;
+  else quarter = 4;
 
-  return { hour, quarter };
+  return { weekday, hour, quarter };
 }
 
 /**
- * Returns true if the given parsed tempo includes the provided current slot.
+ * Returns true if the given parsed tempo includes the provided current tick.
  */
-export function isDueThisTick(tempo: ParsedTempo, current: CurrentSlot): boolean {
-  return tempo.slots.some((slot) => slot.hour === current.hour && slot.quarter === current.quarter);
+export function isDueThisTick(tempo: ParsedTempo, current: TempoTick): boolean {
+  return tempo.ticks.some(
+    (tick) =>
+      tick.weekday === current.weekday &&
+      tick.hour === current.hour &&
+      tick.quarter === current.quarter
+  );
 }
 
 

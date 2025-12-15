@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "ts-node src/lambda.ts",
     "start:compiled": "node dist/lambda.js",
+    "dry-run": "ts-node src/dry-run.ts",
     "lint": "echo \"No linter configured\""
   },
   "keywords": [
